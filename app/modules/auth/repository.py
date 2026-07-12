@@ -1,3 +1,5 @@
+import email
+
 from sqlalchemy.orm import Session
 from app.modules.auth.models import User
 
@@ -14,6 +16,5 @@ class UserRepository:
     def create(self, email: str, password_hash: str, name: str | None, role) -> User:
         user = User(email=email, password_hash=password_hash, name=name, role=role)
         self.db.add(user)
-        self.db.commit()
-        self.db.refresh(user)
+        self.db.flush()
         return user

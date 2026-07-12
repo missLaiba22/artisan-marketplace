@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 from uuid import UUID
 from app.modules.auth.models import UserRole
 
@@ -7,6 +7,13 @@ class RegisterRequest(BaseModel):
     password: str
     name: str | None = None
     role: UserRole
+    shop_name: str | None = None
+
+    @model_validator(mode="after")
+    def validate_artisan_fields(self):
+        if self.role == UserRole.ARTISAN and not self.shop_name:
+            raise ValueError("shop_name is required when registering as an artisan")
+        return self
 
 class LoginRequest(BaseModel):
     email: EmailStr
