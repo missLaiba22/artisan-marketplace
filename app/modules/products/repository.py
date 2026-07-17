@@ -38,3 +38,19 @@ class ProductRepository:
     def list_by_artisan(self, artisan_id) -> list[Product]:
         # Shop owner's own dashboard — sees everything, including inactive.
         return self.db.query(Product).filter(Product.artisan_id == artisan_id).all()
+        
+        # app/modules/products/repository.py — add this method to the existing class
+    def get_by_id_for_update(self, product_id) -> Product | None:
+        """
+        Locking read — SELECT ... FOR UPDATE.
+        Used only during checkout, where a read-then-modify (stock decrement)
+        must block other concurrent checkouts on the same product row.
+        Never use this for normal browsing reads — it would needlessly block
+        other requests that only want to view the product.
+        """
+        return (
+            self.db.query(Product)
+            .filter(Product.id == product_id)
+            .with_for_update()
+            .first()
+        )

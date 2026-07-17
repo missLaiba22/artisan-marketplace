@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.modules.auth.models import User
 from app.modules.artisans.models import Artisan
 from app.modules.products.models import Product
-from app.modules.orders.models import Order
+from app.modules.orders.models import Order, OrderItem, Checkout
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
