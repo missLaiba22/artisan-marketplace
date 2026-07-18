@@ -1,13 +1,17 @@
 # app/main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
 from app.modules.auth.router import router as auth_router
 from app.modules.artisans.router import router as artisans_router
 from app.modules.products.router import router as products_router
 from app.modules.orders.router import router as orders_router
-from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
 
 app = FastAPI(title="Marketplace API")
+
+@app.get("/debug/cors")
+def debug_cors():
+    return {"cors_origins_raw": repr(settings.cors_origins)}
 
 app.add_middleware(
     CORSMiddleware,
