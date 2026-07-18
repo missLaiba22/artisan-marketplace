@@ -12,6 +12,14 @@ class AuthService:
         self.repo = UserRepository(db)
 
     def register(self, data: RegisterRequest):
+        # Admin is never self-registerable — it must be created directly
+        # (seed script / another admin), never through the public endpoint.
+        if data.role == UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin accounts cannot be self-registered",
+            )
+
         if self.repo.get_by_email(data.email):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
@@ -23,11 +31,9 @@ class AuthService:
         )
 
         if data.role == UserRole.ARTISAN:
-            # cross-module call through ArtisanService's public interface —
-            # AuthService never imports Artisan or touches the artisans table directly
             ArtisanService(self.db).create_profile(user_id=user.id, shop_name=data.shop_name)
 
-        self.db.commit()   # single commit — user + artisan succeed or fail together
+        self.db.commit()
         self.db.refresh(user)
         return user
 
