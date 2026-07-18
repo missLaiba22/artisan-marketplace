@@ -62,3 +62,10 @@ def delete_product(
     db: Session = Depends(get_db),
 ):
     return ProductService(db).delete_product(product_id, artisan.id)
+@router.patch("/{product_id}/restore", response_model=ProductResponse)
+def restore_product(
+    product_id: UUID,
+    artisan = Depends(require_approved_artisan),
+    db: Session = Depends(get_db),
+):
+    return ProductService(db).restore_product(product_id, artisan.id)

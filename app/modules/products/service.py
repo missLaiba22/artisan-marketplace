@@ -1,4 +1,6 @@
 # app/modules/products/service.py
+from itertools import product
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.modules.products.repository import ProductRepository
@@ -60,6 +62,12 @@ class ProductService:
     def delete_product(self, product_id, artisan_id):
         product = self._get_owned_product(product_id, artisan_id)
         product.is_active = False   # soft delete — never repo-level hard delete
+        self.db.commit()
+        self.db.refresh(product)
+        return product
+    def restore_product(self, product_id, artisan_id):
+        product = self._get_owned_product(product_id, artisan_id)
+        product.is_active = True
         self.db.commit()
         self.db.refresh(product)
         return product
