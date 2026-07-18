@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1F3A34;
+  --color-ink-soft: #3D5850;
+  --color-parchment: #EDEAE2;
+  --color-parchment-dark: #E0DCD0;
+  --color-brass: #B8863B;
+  --color-brass-soft: #D9B679;
+  --color-clay: #A64B3C;
+  --color-clay-soft: #C97A6C;
+
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+body {
+  background-color: var(--color-parchment);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+/* Hang-tag signature: dashed stitch line + notch, used on product cards */
+.hang-tag {
+  position: relative;
+  border-top: 2px dashed var(--color-ink-soft);
+}
+
+.hang-tag::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--color-parchment);
+  border: 2px solid var(--color-ink-soft);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}

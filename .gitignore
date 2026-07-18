@@ -1,23 +1,8 @@
-# Environment variables — NEVER commit secrets
-.env
-*.env
-
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-
-# Virtual environment
 .venv/
-venv/
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Alembic — keep versions/ but ignore local db files if any
-*.sqlite3
+node_modules/
+__pycache__/
+*.pyc
+.env
+*.zip
+images/
+test-accounts.md
