@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 export default function ProductCard({ product }) {
   const outOfStock = product.stock_quantity === 0;
@@ -14,8 +15,7 @@ export default function ProductCard({ product }) {
           alt={product.name}
           className="w-full aspect-square object-cover"
           onError={(e) => {
-            e.currentTarget.src =
-              "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='400' height='400' fill='%23E0DCD0'/></svg>";
+            e.currentTarget.src = getImageFallbackDataUri({ width: 400, height: 400 });
           }}
         />
       </div>

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,34 +11,34 @@ export default function Navbar() {
   }
 
   return (
-    <header className="border-b border-ink/15 bg-parchment sticky top-0 z-10">
-      <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+    <header className="bg-maroon sticky top-0 z-10">
+      <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
         <Link
           to="/"
-          className="font-display text-xl tracking-tight text-ink"
+          className="font-display text-2xl tracking-tight text-white"
         >
-          Kiln &amp; Thread
+          Karigar
         </Link>
 
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          <Link to="/" className="hover:text-brass transition-colors">
+        <nav className="flex items-center gap-8 text-xs font-mono uppercase tracking-wide text-white/85">
+          <Link to="/shop" className="hover:text-brass-soft transition-colors">
             Shop
           </Link>
 
           {user?.role === "artisan" && (
-            <Link to="/dashboard" className="hover:text-brass transition-colors">
+            <Link to="/dashboard" className="hover:text-brass-soft transition-colors">
               My Shop
             </Link>
           )}
 
           {user?.role === "customer" && (
-            <Link to="/cart" className="hover:text-brass transition-colors">
+            <Link to="/cart" className="hover:text-brass-soft transition-colors">
               Cart
             </Link>
           )}
 
           {user?.role === "admin" && (
-            <Link to="/admin" className="hover:text-brass transition-colors">
+            <Link to="/admin" className="hover:text-brass-soft transition-colors">
               Admin
             </Link>
           )}
@@ -46,18 +46,18 @@ export default function Navbar() {
           {user ? (
             <button
               onClick={handleLogout}
-              className="font-mono text-xs uppercase tracking-wide border border-ink/30 rounded px-3 py-1.5 hover:border-brass hover:text-brass transition-colors"
+              className="border border-white/40 rounded px-4 py-2 hover:border-white active:bg-crimson active:border-crimson transition-colors normal-case font-body text-sm text-white"
             >
               Log out
             </button>
           ) : (
             <>
-              <Link to="/login" className="hover:text-brass transition-colors">
+              <Link to="/login" className="hover:text-brass-soft active:text-crimson transition-colors">
                 Log in
               </Link>
               <Link
                 to="/register"
-                className="font-mono text-xs uppercase tracking-wide bg-ink text-parchment rounded px-3 py-1.5 hover:bg-ink-soft transition-colors"
+                className="border border-white rounded px-4 py-2 hover:bg-white hover:text-maroon active:bg-crimson active:text-white active:border-crimson transition-colors"
               >
                 Sign up
               </Link>

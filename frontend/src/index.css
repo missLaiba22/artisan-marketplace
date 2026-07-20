@@ -1,15 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+/*
+  Karigar palette.
+  Legacy token names (--color-ink, --color-brass, etc.) are kept so pages not
+  touched in this pass (Cart, ProductDetail, Dashboards) don't break — they
+  just inherit the closest Karigar-equivalent color automatically. New tokens
+  (--color-maroon, --color-white) are added for chrome that needs the exact
+  brief colors (nav/footer/hero/buttons). Follow-up: sweep remaining pages to
+  use --color-maroon directly where they currently use bg-ink for buttons.
+*/
 @theme {
-  --color-ink: #1F3A34;
-  --color-ink-soft: #3D5850;
-  --color-parchment: #EDEAE2;
-  --color-parchment-dark: #E0DCD0;
-  --color-brass: #B8863B;
-  --color-brass-soft: #D9B679;
-  --color-clay: #A64B3C;
-  --color-clay-soft: #C97A6C;
+  --color-maroon: #5C1326;      /* NEW — header, footer, hero, primary buttons */
+  --color-crimson: #8C2641;     /* NEW — same value as --color-brass, explicit name for clarity */
+  --color-ivory: #F9F6F0;       /* NEW — same value as --color-parchment */
+  --color-white: #FFFFFF;       /* NEW — cards, search bar */
+
+  --color-ink: #222222;         /* was #1F3A34 → now Charcoal Dark */
+  --color-ink-soft: #6E6A64;    /* was #3D5850 → now Muted Taupe */
+  --color-parchment: #F9F6F0;   /* was #EDEAE2 → now Warm Ivory */
+  --color-parchment-dark: #EFE6D8;
+  --color-brass: #8C2641;       /* was #B8863B → now Accent Crimson */
+  --color-brass-soft: #E3B8C4;  /* was #D9B679 → light crimson tint */
+  --color-clay: #A64B3C;        /* unchanged — reserved for errors/destructive actions, kept distinct from crimson */
+  --color-clay-soft: #C97A6C;   /* unchanged */
 
   --font-display: 'Fraunces', serif;
   --font-body: 'Inter', sans-serif;
@@ -22,26 +36,27 @@ body {
   font-family: var(--font-body);
 }
 
-/* Hang-tag signature: dashed stitch line + notch, used on product cards */
+/* Hang-tag signature: dashed stitch line + notch, used on product cards.
+   Re-colored from brass to crimson — kept the motif, it was already a good idea. */
 .hang-tag {
   position: relative;
-  border-top: 2px dashed var(--color-ink-soft);
+  border-top: 1px solid var(--color-brass);
 }
 
 .hang-tag::before {
   content: "";
   position: absolute;
-  top: -7px;
+  top: -6px;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 9999px;
   background: var(--color-parchment);
-  border: 2px solid var(--color-ink-soft);
+  border: 1px solid var(--color-brass);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brass);
+  outline: 2px solid var(--color-crimson);
   outline-offset: 2px;
 }
