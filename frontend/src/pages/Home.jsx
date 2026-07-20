@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import * as artisansApi from "../api/artisans";
 import * as productsApi from "../api/products";
 import { getImageFallbackDataUri } from "../utils/imageFallback";
-import { getImageFallbackDataUri } from "../utils/imageFallback";
+
 
 // --- Static content -------------------------------------------------------
 // This array is a placeholder until the backend supports it for real:
