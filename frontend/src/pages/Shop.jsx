@@ -8,7 +8,7 @@ export default function Shop() {
 
   useEffect(() => {
     productsApi
-      .listProducts()
+      .listProducts({ limit: 25 })
       .then((data) => {
         setProducts(data);
         setStatus("ready");

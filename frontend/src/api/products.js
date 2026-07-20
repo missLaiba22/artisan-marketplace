@@ -1,6 +1,6 @@
 import client from "./client";
 
-export function listProducts({ skip = 0, limit = 20 } = {}) {
+export function listProducts({ skip = 0, limit = 25 } = {}) {
   return client
     .get("/products", { params: { skip, limit } })
     .then((res) => res.data);
