@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import * as ordersApi from "../api/orders";
+import { getCheckoutHistory } from "../utils/orderHistory";
 
 function money(value) {
   return `$${Number(value).toFixed(2)}`;
@@ -73,17 +74,37 @@ export default function MyOrders() {
   useEffect(() => {
     let cancelled = false;
 
+    function mergeHistory(remoteHistory, localHistory) {
+      const combined = [...remoteHistory, ...localHistory];
+      const seen = new Set();
+      return combined.filter((checkout) => {
+        const key = checkout.id ?? checkout.payment_reference;
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+    }
+
+    const localHistory = getCheckoutHistory();
+
     ordersApi
       .listMyOrderHistory()
       .then((data) => {
         if (!cancelled) {
-          setHistory(data);
+          setHistory(mergeHistory(data, localHistory));
           setStatus("ready");
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setStatus("error");
+          if (localHistory.length > 0) {
+            setHistory(localHistory);
+            setStatus("ready");
+          } else {
+            setStatus("error");
+          }
         }
       });
 
