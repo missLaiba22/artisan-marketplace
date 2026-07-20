@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import * as artisansApi from "../api/artisans";
 import * as productsApi from "../api/products";
 import { getImageFallbackDataUri } from "../utils/imageFallback";
+import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 // --- Static content -------------------------------------------------------
 // This array is a placeholder until the backend supports it for real:
@@ -15,26 +16,31 @@ const ARTISAN_STORIES = [
     shop: "Multan Blue Pottery",
     region: "Multan, Punjab",
     quote: "Every glaze is mixed by hand, the same way my grandfather taught me — no two pieces ever share the exact same blue.",
+    image: "https://res.cloudinary.com/j9bjqwat/image/upload/v1784561031/Multan_Blue_Pottery_qrlxak.png",
   },
   {
     shop: "Sindh Threads Studio",
     region: "Hyderabad, Sindh",
     quote: "Each stitch of Ajrak carries a pattern older than any of us — I'm just the one holding the needle today.",
+    image: "https://res.cloudinary.com/j9bjqwat/image/upload/v1784561082/Sindh_threads_embroidery_xm7yoa.png",
   },
   {
     shop: "Chiniot Woodcrafts",
     region: "Chiniot, Punjab",
     quote: "Walnut wood teaches patience. You can't rush a carving — you can only listen to the grain.",
+    image: "https://res.cloudinary.com/j9bjqwat/image/upload/v1784560942/Chiniot_Woodcrafts_korqwg.png",
   },
   {
     shop: "Peshawar Leather Works",
     region: "Peshawar, Khyber Pakhtunkhwa",
     quote: "Good leather ages with you. I make pieces meant to outlast the person who buys them.",
+    image: "https://res.cloudinary.com/j9bjqwat/image/upload/v1784561038/Peshawar_Leather_Works_msxazz.png",
   },
   {
     shop: "Crochet Corner Pakistan",
     region: "Lahore, Punjab",
     quote: "I learned to crochet from my mother during power outages. Now it's how I built my own income.",
+    image: "https://res.cloudinary.com/j9bjqwat/image/upload/v1784560970/Crochet_Corner_Pakistan_qpdbex.png",
   },
 ];
 
@@ -171,11 +177,16 @@ export default function Home() {
               key={artisan.shop}
               className={`grid sm:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "sm:[direction:rtl]" : ""}`}
             >
-              <div
-                className={`aspect-4/3 rounded-sm bg-linear-to-br from-parchment-dark to-parchment flex items-center justify-center font-mono text-xs uppercase tracking-wide text-ink-soft ${i % 2 === 1 ? "sm:[direction:ltr]" : ""}`}
-              >
-                Artisan photo — {artisan.region.split(",")[0]}
-              </div>
+              <div className={`aspect-4/3 rounded-sm overflow-hidden ${i % 2 === 1 ? "sm:[direction:ltr]" : ""}`}>
+                <img
+                  src={artisan.image}
+                  alt={`${artisan.shop} — ${artisan.region}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getImageFallbackDataUri({ width: 400, height: 300, fill: "#EFE6D8" });
+            }}
+          />
+        </div>
               <div className={i % 2 === 1 ? "sm:[direction:ltr]" : ""}>
                 <p className="font-mono text-[11px] uppercase tracking-wide text-ink-soft mb-3">
                   {artisan.region}
