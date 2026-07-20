@@ -32,9 +32,14 @@ export default function Navbar() {
           )}
 
           {user?.role === "customer" && (
-            <Link to="/cart" className="hover:text-brass-soft transition-colors">
-              Cart
-            </Link>
+            <>
+              <Link to="/orders" className="hover:text-brass-soft transition-colors">
+                Orders
+              </Link>
+              <Link to="/cart" className="hover:text-brass-soft transition-colors">
+                Cart
+              </Link>
+            </>
           )}
 
           {user?.role === "admin" && (

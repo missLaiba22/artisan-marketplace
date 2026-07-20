@@ -11,6 +11,7 @@ import Shop from "./pages/Shop";
 import ShopDetail from "./pages/ShopDetail";
 import Cart from "./pages/Cart";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import MyOrders from "./pages/MyOrders";
 import ArtisanDashboard from "./pages/ArtisanDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
@@ -33,6 +34,14 @@ function App() {
               element={
                 <ProtectedRoute roles={["customer"]}>
                   <Cart />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute roles={["customer"]}>
+                  <MyOrders />
                 </ProtectedRoute>
               }
             />

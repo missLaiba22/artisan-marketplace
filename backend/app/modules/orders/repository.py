@@ -1,5 +1,5 @@
 # app/modules/orders/repository.py
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.modules.orders.models import Checkout, Order, OrderItem, PaymentStatus
 
 
@@ -19,6 +19,25 @@ class CheckoutRepository:
 
     def get_by_id(self, checkout_id) -> Checkout | None:
         return self.db.query(Checkout).filter(Checkout.id == checkout_id).first()
+
+    def list_by_customer(self, customer_id, limit: int = 10) -> list[Checkout]:
+        return (
+            self.db.query(Checkout)
+            .filter(Checkout.customer_id == customer_id)
+            .options(selectinload(Checkout.orders).selectinload(Order.items))
+            .order_by(Checkout.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_latest_by_customer(self, customer_id) -> Checkout | None:
+        return (
+            self.db.query(Checkout)
+            .filter(Checkout.customer_id == customer_id)
+            .options(selectinload(Checkout.orders).selectinload(Order.items))
+            .order_by(Checkout.created_at.desc())
+            .first()
+        )
 
 
 class OrderRepository:

@@ -78,3 +78,9 @@ class OrderService:
 
     def list_orders_for_artisan(self, artisan_id):
         return self.order_repo.list_by_artisan(artisan_id)
+
+    def list_checkouts_for_customer(self, customer_id, limit: int = 10):
+        return self.checkout_repo.list_by_customer(customer_id, limit=limit)
+
+    def get_latest_checkout_for_customer(self, customer_id):
+        return self.checkout_repo.get_latest_by_customer(customer_id)

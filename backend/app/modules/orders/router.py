@@ -1,5 +1,5 @@
 # app/modules/orders/router.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.modules.auth.dependencies import require_role
@@ -26,3 +26,22 @@ def list_my_artisan_orders(
     db: Session = Depends(get_db),
 ):
     return OrderService(db).list_orders_for_artisan(artisan.id)
+
+
+@router.get("/me/history", response_model=list[CheckoutResponse])
+def list_my_order_history(
+    current_user=Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+):
+    return OrderService(db).list_checkouts_for_customer(current_user.id)
+
+
+@router.get("/me/latest", response_model=CheckoutResponse)
+def get_my_latest_order(
+    current_user=Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+):
+    checkout = OrderService(db).get_latest_checkout_for_customer(current_user.id)
+    if checkout is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No order history found")
+    return checkout

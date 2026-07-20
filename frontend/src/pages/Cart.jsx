@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../context/useCart";
 import * as ordersApi from "../api/orders";
 import { getImageFallbackDataUri } from "../utils/imageFallback";
+import { saveCheckout } from "../utils/orderHistory";
 
 export default function Cart() {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart();
@@ -17,6 +18,7 @@ export default function Cart() {
       const checkoutResult = await ordersApi.checkout({
         items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
       });
+      saveCheckout(checkoutResult);
       clearCart();
       navigate("/order-confirmation", { state: { checkout: checkoutResult } });
     } catch (err) {
