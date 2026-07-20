@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as productsApi from "../api/products";
-import { useAuth } from "../context/AuthContext";
-import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/useAuth";
+import { useCart } from "../context/useCart";
+import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 export default function ProductDetail() {
   const { productId } = useParams();
@@ -52,8 +53,7 @@ export default function ProductDetail() {
         alt={product.name}
         className="w-full aspect-square object-cover rounded"
         onError={(e) => {
-          e.currentTarget.src =
-            "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='400' height='400' fill='%23E0DCD0'/></svg>";
+          e.currentTarget.src = getImageFallbackDataUri({ width: 400, height: 400 });
         }}
       />
 

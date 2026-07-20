@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 // Wraps a route element. If `roles` is given, the user's role must be in
 // that list, mirroring the backend's require_role() — this is a UX

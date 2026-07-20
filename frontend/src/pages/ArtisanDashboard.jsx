@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as productsApi from "../api/products";
+import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 const emptyForm = {
   name: "",
@@ -136,8 +137,7 @@ export default function ArtisanDashboard() {
                   alt={p.name}
                   className="w-14 h-14 object-cover rounded"
                   onError={(e) => {
-                    e.currentTarget.src =
-                      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23E0DCD0'/></svg>";
+                    e.currentTarget.src = getImageFallbackDataUri();
                   }}
                 />
                 <div className="flex-1">

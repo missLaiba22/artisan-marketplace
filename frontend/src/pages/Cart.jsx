@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/useCart";
 import * as ordersApi from "../api/orders";
+import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 export default function Cart() {
   const { items, updateQuantity, removeItem, clearCart, totalPrice } = useCart();
@@ -50,8 +51,7 @@ export default function Cart() {
               alt={product.name}
               className="w-16 h-16 object-cover rounded"
               onError={(e) => {
-                e.currentTarget.src =
-                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23E0DCD0'/></svg>";
+                e.currentTarget.src = getImageFallbackDataUri();
               }}
             />
             <div className="flex-1">
