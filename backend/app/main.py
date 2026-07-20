@@ -9,10 +9,6 @@ from app.modules.orders.router import router as orders_router
 
 app = FastAPI(title="Marketplace API")
 
-@app.get("/debug/cors")
-def debug_cors():
-    return {"cors_origins_raw": repr(settings.cors_origins)}
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_origins.split(",")],

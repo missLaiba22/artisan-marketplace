@@ -7,8 +7,32 @@ from app.modules.auth.dependencies import require_role
 from app.modules.auth.models import UserRole
 from app.modules.artisans.schemas import ArtisanProfileResponse, ArtisanUpdateRequest
 from app.modules.artisans.service import ArtisanService
+from app.modules.products.schemas import ProductResponse
 
 router = APIRouter(prefix="/artisans", tags=["artisans"])
+
+
+@router.get("", response_model=list[ArtisanProfileResponse])
+def list_artisans(
+    db: Session = Depends(get_db),
+):
+    return ArtisanService(db).list_approved()
+
+
+@router.get("/{artisan_id}", response_model=ArtisanProfileResponse)
+def get_artisan(
+    artisan_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return ArtisanService(db).get_public_profile(artisan_id)
+
+
+@router.get("/{artisan_id}/products", response_model=list[ProductResponse])
+def list_artisan_products(
+    artisan_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return ArtisanService(db).list_products(artisan_id)
 
 @router.get("/me", response_model=ArtisanProfileResponse)
 def get_my_profile(

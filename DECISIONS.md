@@ -281,3 +281,6 @@ orders all implemented and manually verified end-to-end, including the
 multi-artisan checkout/locking/snapshotting flow. Frontend work begins
 next: React + minimal Tailwind, deferred appropriately until backend
 proved out.
+
+Deployment: CORS misconfiguration debugging (process note)
+A CORS_ORIGINS env var that looked correct in the dashboard still failed silently because the deployed code hadn't actually redeployed — git push succeeded, but Render's auto-deploy either lagged or wasn't triggering as expected, and the browser/curl symptoms (400 Bad Request, missing Access-Control-Allow-Origin) looked identical to an actual origin mismatch. Diagnosed by adding a temporary /debug/cors endpoint that echoed repr(settings.cors_origins) straight from the running process — the only way to get ground truth without shell access on Render's free tier. Lesson: when a config value "looks right," verify what the running process actually has loaded, not what's saved in a dashboard or committed in git — those are three different things that can silently diverge.

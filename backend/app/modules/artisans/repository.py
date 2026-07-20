@@ -18,5 +18,15 @@ class ArtisanRepository:
     def get_by_id(self, artisan_id) -> Artisan | None:
         return self.db.query(Artisan).filter(Artisan.id == artisan_id).first()
 
+    def get_public_by_id(self, artisan_id) -> Artisan | None:
+        return (
+            self.db.query(Artisan)
+            .filter(Artisan.id == artisan_id, Artisan.is_approved.is_(True))
+            .first()
+        )
+
+    def list_approved(self) -> list[Artisan]:
+        return self.db.query(Artisan).filter(Artisan.is_approved.is_(True)).all()
+
     def list_pending(self) -> list[Artisan]:
         return self.db.query(Artisan).filter(Artisan.is_approved.is_(False)).all()
