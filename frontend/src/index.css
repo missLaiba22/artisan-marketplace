@@ -60,3 +60,57 @@ body {
   outline: 2px solid var(--color-crimson);
   outline-offset: 2px;
 }
+
+/* --- Motion ------------------------------------------------------------ */
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Hero entrance — applied directly, no observer needed (always above fold) */
+.hero-fade-in {
+  opacity: 0;
+  animation: fade-in-up 0.7s ease-out forwards;
+}
+
+/* Scroll reveal — paired with the Reveal component */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Navbar link underline */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-fade-in,
+  .reveal {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

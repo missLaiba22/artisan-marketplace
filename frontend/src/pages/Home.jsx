@@ -1,3 +1,4 @@
+import Reveal from "../components/Reveal";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import * as artisansApi from "../api/artisans";
@@ -131,27 +132,20 @@ export default function Home() {
     <div>
       {/* 1. HERO */}
       <header className="bg-linear-to-br from-maroon to-[#3E0F1A] text-white text-center px-6 py-28">
-        <p className="font-mono text-[11px] tracking-widest uppercase text-brass-soft mb-5">
+        <p className="hero-fade-in font-mono text-[11px] tracking-widest uppercase text-brass-soft mb-5" style={{ animationDelay: "0ms" }}>
           A digital gallery of Pakistani craftsmanship
         </p>
-        <h1 className="font-display text-5xl sm:text-6xl leading-tight max-w-3xl mx-auto mb-6">
+        <h1 className="hero-fade-in font-display text-5xl sm:text-6xl leading-tight max-w-3xl mx-auto mb-6" style={{ animationDelay: "120ms" }}>
           Every Handmade Piece Carries a Story
         </h1>
-        <p className="text-white/80 max-w-md mx-auto mb-10 leading-relaxed">
-          Discover pottery, textiles, and heirlooms made by hand by independent
-          artisans across Pakistan.
+        <p className="hero-fade-in text-white/80 max-w-md mx-auto mb-10 leading-relaxed" style={{ animationDelay: "240ms" }}>
+          Discover pottery, textiles, and heirlooms made by hand by independent artisans across Pakistan.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <a
-            href="/shop"
-            className="bg-white text-maroon font-mono text-xs uppercase tracking-wide px-8 py-4 rounded-sm hover:bg-brass-soft active:bg-crimson active:text-white transition-colors"
-          >
+        <div className="hero-fade-in flex items-center justify-center gap-4" style={{ animationDelay: "360ms" }}>
+          <a href="/shop" className="bg-white text-maroon font-mono text-xs uppercase tracking-wide px-8 py-4 rounded-sm hover:bg-brass-soft hover:scale-105 active:bg-crimson active:text-white transition-all">
             Explore the Collection
           </a>
-          <a
-            href="#stories"
-            className="border border-white/60 text-white font-mono text-xs uppercase tracking-wide px-8 py-4 rounded-sm hover:bg-white/10 active:bg-crimson active:border-crimson transition-colors"
-          >
+          <a href="#stories" className="border border-white/60 text-white font-mono text-xs uppercase tracking-wide px-8 py-4 rounded-sm hover:bg-white/10 hover:scale-105 active:bg-crimson active:border-crimson transition-all">
             Meet Our Artisans
           </a>
         </div>
@@ -173,10 +167,8 @@ export default function Home() {
         />
         <div className="max-w-4xl mx-auto space-y-20">
           {ARTISAN_STORIES.map((artisan, i) => (
-            <div
-              key={artisan.shop}
-              className={`grid sm:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "sm:[direction:rtl]" : ""}`}
-            >
+            <Reveal key={artisan.shop} delay={i * 80}>
+              <div className={`grid sm:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "sm:[direction:rtl]" : ""}`}>
               <div className={`aspect-4/3 rounded-sm overflow-hidden ${i % 2 === 1 ? "sm:[direction:ltr]" : ""}`}>
                 <img
                   src={artisan.image}
@@ -202,7 +194,8 @@ export default function Home() {
                   Visit Shop
                 </Link>
               </div>
-            </div>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -224,8 +217,9 @@ export default function Home() {
 
         {status === "ready" && (
           <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8">
-            {products.map((p) => (
-              <Link key={p.id} to={`/products/${p.id}`} className="block bg-white">
+            {products.map((p, i) => (
+              <Reveal key={p.id} delay={i * 60}>
+                <Link to={`/products/${p.id}`} className="block bg-white">
                 <div className="hang-tag">
                   <img
                     src={p.image_url}
@@ -240,7 +234,8 @@ export default function Home() {
                   <h4 className="font-display text-base leading-snug">{p.name}</h4>
                   <span className="font-mono text-brass text-sm">${Number(p.price).toFixed(2)}</span>
                 </div>
-              </Link>
+                </Link>
+              </Reveal>
             ))}
           </div>
         )}
@@ -259,26 +254,26 @@ export default function Home() {
       <section className="bg-maroon px-6 py-24">
         <SectionHead eyebrow="Our promise" title="Why Karigar" light />
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-10 text-center">
-          <div>
+          <Reveal delay={0}><div>
             <WhyIcon path={<path d="M7 11V6a2 2 0 1 1 4 0v5M11 10V4a2 2 0 1 1 4 0v6M15 10.5V6a2 2 0 1 1 4 0v9c0 3.3-2.7 6-6 6h-2c-2 0-3-.6-4.3-2L3 15.5c-.6-.7-.5-1.7.2-2.3.6-.5 1.5-.5 2.1.1L7 15" />} />
             <h4 className="font-display text-white text-lg mb-2">Direct from Artisans</h4>
             <p className="text-white/70 text-xs leading-relaxed">No middlemen — every purchase goes straight to the maker.</p>
-          </div>
-          <div>
+          </div></Reveal>
+          <Reveal delay={80}><div>
             <WhyIcon path={<path d="M12 2 3 6v6c0 5 4 8.5 9 10 5-1.5 9-5 9-10V6z" />} />
             <h4 className="font-display text-white text-lg mb-2">Authentic Craftsmanship</h4>
             <p className="text-white/70 text-xs leading-relaxed">Verified artisan shops, each approved before they can sell.</p>
-          </div>
-          <div>
+          </div></Reveal>
+          <Reveal delay={160}><div>
             <WhyIcon path={<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />} />
             <h4 className="font-display text-white text-lg mb-2">Fair Trade Pricing</h4>
             <p className="text-white/70 text-xs leading-relaxed">Artisans set their own prices — fair value for real skill.</p>
-          </div>
-          <div>
+          </div></Reveal>
+          <Reveal delay={240}><div>
             <WhyIcon path={<path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />} />
             <h4 className="font-display text-white text-lg mb-2">Nationwide Delivery</h4>
             <p className="text-white/70 text-xs leading-relaxed">From Multan to Karachi — carefully packed, reliably shipped.</p>
-          </div>
+          </div></Reveal>
         </div>
       </section>
 
@@ -286,13 +281,15 @@ export default function Home() {
       <section className="px-6 py-24">
         <SectionHead eyebrow="In their words" title="Customer Stories" />
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-8">
-          {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="bg-white border border-parchment-dark p-8">
+          {TESTIMONIALS.map((t, i) => (
+            <Reveal key={t.name} delay={i * 100}>
+              <div className="bg-white border border-parchment-dark p-8">
               <p className="font-display italic text-ink leading-relaxed mb-6">"{t.quote}"</p>
               <p className="font-mono text-xs uppercase tracking-wide text-ink-soft">
                 {t.name} — {t.city}
               </p>
-            </div>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>

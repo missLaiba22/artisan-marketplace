@@ -7,7 +7,7 @@ export default function ProductCard({ product }) {
   return (
     <Link
       to={`/products/${product.id}`}
-      className="block bg-white/50 rounded-b rounded-t-sm overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all"
+      className="block bg-white/50 rounded-b rounded-t-sm overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ease-out"
     >
       <div className="hang-tag">
         <img

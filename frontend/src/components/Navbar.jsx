@@ -21,29 +21,29 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-8 text-xs font-mono uppercase tracking-wide text-white/85">
-          <Link to="/shop" className="hover:text-brass-soft transition-colors">
+          <Link to="/shop" className="nav-link hover:text-brass-soft transition-colors">
             Shop
           </Link>
 
           {user?.role === "artisan" && (
-            <Link to="/dashboard" className="hover:text-brass-soft transition-colors">
+            <Link to="/dashboard" className="nav-link hover:text-brass-soft transition-colors">
               My Shop
             </Link>
           )}
 
           {user?.role === "customer" && (
             <>
-              <Link to="/orders" className="hover:text-brass-soft transition-colors">
+              <Link to="/orders" className="nav-link hover:text-brass-soft transition-colors">
                 Orders
               </Link>
-              <Link to="/cart" className="hover:text-brass-soft transition-colors">
+              <Link to="/cart" className="nav-link hover:text-brass-soft transition-colors">
                 Cart
               </Link>
             </>
           )}
 
           {user?.role === "admin" && (
-            <Link to="/admin" className="hover:text-brass-soft transition-colors">
+            <Link to="/admin" className="nav-link hover:text-brass-soft transition-colors">
               Admin
             </Link>
           )}
