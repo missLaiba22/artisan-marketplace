@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as productsApi from "../api/products";
+import * as ordersApi from "../api/orders";
 import { getImageFallbackDataUri } from "../utils/imageFallback";
 
 const emptyForm = {
@@ -19,6 +20,9 @@ export default function ArtisanDashboard() {
   const [submitting, setSubmitting] = useState(false);
   // null = "add" mode. A product id = "edit" mode, form is prefilled from that product.
   const [editingId, setEditingId] = useState(null);
+
+  const [orders, setOrders] = useState([]);
+  const [ordersStatus, setOrdersStatus] = useState("loading"); // loading | ready | error
 
   function loadProducts() {
     setStatus("loading");
@@ -40,7 +44,27 @@ export default function ArtisanDashboard() {
       });
   }
 
+  function loadOrders() {
+    setOrdersStatus("loading");
+    ordersApi
+      .listMyArtisanOrders()
+      .then((data) => {
+        setOrders(data);
+        setOrdersStatus("ready");
+      })
+      .catch(() => setOrdersStatus("error"));
+  }
+
   useEffect(loadProducts, []);
+
+  // Orders share the same require_approved_artisan gate as products, so
+  // don't fetch them until we know the shop is actually approved — otherwise
+  // a pending artisan hits a second, redundant 403 for no reason.
+  useEffect(() => {
+    if (status === "ready") {
+      loadOrders();
+    }
+  }, [status]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -175,6 +199,42 @@ export default function ArtisanDashboard() {
             ))}
           </div>
         )}
+
+        <div className="mt-12">
+          <h2 className="font-display text-2xl mb-6">Orders</h2>
+
+          {ordersStatus === "loading" && (
+            <p className="font-mono text-sm text-ink-soft">Loading orders…</p>
+          )}
+          {ordersStatus === "error" && (
+            <p className="text-clay text-sm">Couldn't load your orders.</p>
+          )}
+          {ordersStatus === "ready" && orders.length === 0 && (
+            <p className="text-ink-soft text-sm">No orders yet.</p>
+          )}
+
+          {ordersStatus === "ready" && orders.length > 0 && (
+            <div className="space-y-4">
+              {orders.map((order) => (
+                <div key={order.id} className="bg-white/50 rounded p-4">
+                  <p className="font-mono text-xs uppercase text-ink-soft mb-2">
+                    Order {order.id.slice(0, 8)} · {order.status}
+                  </p>
+                  <ul className="divide-y divide-ink/10">
+                    {order.items.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+                        <span>{item.product_name} × {item.quantity}</span>
+                        <span className="font-mono text-brass">
+                          ${(Number(item.unit_price) * item.quantity).toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white/50 rounded p-5 h-fit sticky top-24 space-y-3">
