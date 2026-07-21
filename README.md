@@ -39,7 +39,9 @@ router → service → repository → database
 | `orders` | Multi-vendor checkout, price snapshotting, locked-inventory concurrency |
 
 ## Getting Started
-**Deployed link**
+## Live Demo
+
+🚀 **Try the application here:** [Karigar Marketplace](https://artisan-marketplace-ten.vercel.app)
 
 **Backend**
 ```bash
