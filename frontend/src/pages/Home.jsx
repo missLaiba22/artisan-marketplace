@@ -187,12 +187,18 @@ export default function Home() {
                 <p className="font-display italic text-ink-soft leading-relaxed mb-6">
                   "{artisan.quote}"
                 </p>
-                <Link
-                  to={artisanLinks[artisan.shop] ? `/shops/${artisanLinks[artisan.shop]}` : "/shop"}
-                  className="inline-block border border-maroon text-maroon font-mono text-xs uppercase tracking-wide px-6 py-2.5 rounded-sm hover:bg-maroon hover:text-white active:bg-crimson active:border-crimson transition-colors"
-                >
-                  Visit Shop
-                </Link>
+                {artisanLinks[artisan.shop] ? (
+                  <Link
+                    to={`/shops/${artisanLinks[artisan.shop]}`}
+                    className="inline-block border border-maroon text-maroon font-mono text-xs uppercase tracking-wide px-6 py-2.5 rounded-sm hover:bg-maroon hover:text-white active:bg-crimson active:border-crimson transition-colors"
+                  >
+                    Visit Shop
+                  </Link>
+                ) : (
+                  <span className="inline-block border border-ink/20 text-ink-soft font-mono text-xs uppercase tracking-wide px-6 py-2.5 rounded-sm">
+                    Shop unavailable
+                  </span>
+                )}
               </div>
               </div>
             </Reveal>

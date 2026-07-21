@@ -29,7 +29,8 @@ class ArtisanService:
         return self.repo.list_approved()
 
     def list_products(self, artisan_id):
-        return ProductRepository(self.db).list_by_artisan(artisan_id)
+        self.get_public_profile(artisan_id)
+        return ProductRepository(self.db).list_active_by_artisan(artisan_id)
 
     def update_shop_name(self, user_id, shop_name: str):
         artisan = self.get_my_profile(user_id)

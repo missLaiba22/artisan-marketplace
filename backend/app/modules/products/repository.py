@@ -38,6 +38,13 @@ class ProductRepository:
     def list_by_artisan(self, artisan_id) -> list[Product]:
         # Shop owner's own dashboard — sees everything, including inactive.
         return self.db.query(Product).filter(Product.artisan_id == artisan_id).all()
+
+    def list_active_by_artisan(self, artisan_id) -> list[Product]:
+        return (
+            self.db.query(Product)
+            .filter(Product.artisan_id == artisan_id, Product.is_active.is_(True))
+            .all()
+        )
         
         # app/modules/products/repository.py — add this method to the existing class
     def get_by_id_for_update(self, product_id) -> Product | None:
