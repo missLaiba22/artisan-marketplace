@@ -103,6 +103,7 @@ function WhyIcon({ path }) {
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [artisanLinks, setArtisanLinks] = useState({});
+  const [artisanLinksLoaded, setArtisanLinksLoaded] = useState(false); // NEW — distinguishes "not fetched yet" from "fetched, empty"
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
@@ -115,7 +116,8 @@ export default function Home() {
         }, {});
         setArtisanLinks(linksByName);
       })
-      .catch(() => setArtisanLinks({}));
+      .catch(() => setArtisanLinks({}))
+      .finally(() => setArtisanLinksLoaded(true)); // NEW — runs whether the call succeeds or fails
 
     // "Handpicked Collection" = most recent 8, per product decision.
     // list_products already orders by insertion; no backend change needed.
@@ -187,7 +189,17 @@ export default function Home() {
                 <p className="font-display italic text-ink-soft leading-relaxed mb-6">
                   "{artisan.quote}"
                 </p>
-                {artisanLinks[artisan.shop] ? (
+                {/* CHANGED: three-way branch instead of two. While the fetch is
+                    still in flight, render an invisible placeholder of the same
+                    size — never show "unavailable" until we actually know. */}
+                {!artisanLinksLoaded ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block border border-transparent font-mono text-xs uppercase tracking-wide px-6 py-2.5 rounded-sm opacity-0 select-none"
+                  >
+                    Visit Shop
+                  </span>
+                ) : artisanLinks[artisan.shop] ? (
                   <Link
                     to={`/shops/${artisanLinks[artisan.shop]}`}
                     className="inline-block border border-maroon text-maroon font-mono text-xs uppercase tracking-wide px-6 py-2.5 rounded-sm hover:bg-maroon hover:text-white active:bg-crimson active:border-crimson transition-colors"
