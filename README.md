@@ -43,6 +43,29 @@ router → service → repository → database
 
 🚀 **Try the application here:** [Karigar Marketplace](https://artisan-marketplace-ten.vercel.app)
 
+### Demo Accounts
+
+Use the following accounts to explore different roles in the application.
+
+| Role | Email | Password |
+|------|-------|----------|
+| 👑 Admin | `admin@demo.com` | `AdminDemo1234!` |
+| 🏺 Artisan | `multanbluepottery@demo.com` | `Demo1234!` |
+
+**What you can test**
+
+### 👑 Admin
+- Log in to the admin dashboard
+- Review and approve artisan applications
+- Manage marketplace data
+- Access administrator-only functionality
+
+### 🏺 Artisan
+- Access the artisan dashboard
+- Create and manage product listings
+- Update shop information
+- View and manage incoming orders
+
 **Backend**
 ```bash
 cd backend
