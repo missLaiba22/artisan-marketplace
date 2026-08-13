@@ -12,6 +12,7 @@ from app.core.database import Base
 from app.core.config import settings
 
 from app.modules.auth.models import User
+from app.modules.auth.oauth_models import OAuthAccount
 from app.modules.artisans.models import Artisan
 from app.modules.products.models import Product
 from app.modules.orders.models import Order, OrderItem, Checkout

@@ -8,6 +8,22 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     cors_origins: str = "http://localhost:5173"
 
+     # --- Google OAuth ---
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+    frontend_url: str = "http://localhost:5173"
+
+    @field_validator("database_url")
+    @classmethod
+    def fix_postgres_scheme(cls, v: str) -> str:
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
+
+    class Config:
+        env_file = ".env"
+
     @field_validator("database_url")
     @classmethod
     def fix_postgres_scheme(cls, v: str) -> str:

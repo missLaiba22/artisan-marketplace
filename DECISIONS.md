@@ -284,3 +284,158 @@ proved out.
 
 Deployment: CORS misconfiguration debugging (process note)
 A CORS_ORIGINS env var that looked correct in the dashboard still failed silently because the deployed code hadn't actually redeployed — git push succeeded, but Render's auto-deploy either lagged or wasn't triggering as expected, and the browser/curl symptoms (400 Bad Request, missing Access-Control-Allow-Origin) looked identical to an actual origin mismatch. Diagnosed by adding a temporary /debug/cors endpoint that echoed repr(settings.cors_origins) straight from the running process — the only way to get ground truth without shell access on Render's free tier. Lesson: when a config value "looks right," verify what the running process actually has loaded, not what's saved in a dashboard or committed in git — those are three different things that can silently diverge.
+
+---
+
+## Auth Module — Google OAuth
+
+### Identity storage: separate `OAuthAccount` table, not fields on `User`
+Rejected alternative: add `oauth_provider` / `oauth_provider_id` columns directly
+to `User`. Rejected because `User` should stay focused on identity/role data,
+and a column-per-provider approach doesn't scale — adding a second provider
+(GitHub, Apple, etc.) later would mean either more nullable columns on `User`
+or a schema change. A separate `OAuthAccount` table with `(provider,
+provider_user_id)` supports any number of linked identities per user without
+touching `User` again. Same reasoning as why `require_approved_artisan` lives
+in `artisans/`, not `auth/` — a table should own the data it's actually about.
+
+`OAuthAccount` has a unique constraint on `(provider, provider_user_id)` —
+this specific Google account can only ever be linked to one of our users,
+preventing an accidental duplicate-account bug where the same Google identity
+somehow attaches to two local users.
+
+### `User.password_hash` made nullable
+A user who signs up purely through Google never sets a local password.
+Two options were considered: (1) make `password_hash` nullable and treat
+`NULL` as "no local password — this account can only log in via a linked
+OAuthAccount," or (2) generate a random, unusable password hash just to
+satisfy a `NOT NULL` constraint. Rejected (2): storing a fake hash for a
+password that doesn't exist is a workaround masquerading as data, and creates
+risk if a future "reset password" flow ever touched it — a Google-only user
+could end up with a real, guessable local password by accident. Chose (1) —
+`NULL` honestly represents the actual state of the account. `AuthService.login()`
+explicitly checks `password_hash is None` before calling `verify_password()`,
+returning the same generic "Invalid credentials" 401 as any other failed
+login — this avoids both a `TypeError` from passing `None` into passlib and
+avoids leaking "this email is Google-only" as a distinct error message
+(same account-enumeration-prevention principle as `forgot_password` always
+returning 202).
+
+### Account linking: three-step resolution, checked in order
+Implemented in `OAuthService.login_or_register()`:
+1. **Known Google identity** — `OAuthAccount` already exists for this
+   `(provider, provider_user_id)` → fetch that user, done. Fastest path,
+   no email lookup needed.
+2. **Existing local account, same email** — no `OAuthAccount` yet, but a
+   `User` with this email already exists (they registered the normal way
+   first) → link by creating an `OAuthAccount` row pointing at that
+   existing `User`, don't create a duplicate. Preserves their order
+   history, artisan shop, everything — they now have two ways to log into
+   the *same* identity.
+3. **Neither exists** — brand new person → create both `User` and
+   `OAuthAccount` together.
+
+Each step is only checked if the previous one didn't resolve, because they
+answer genuinely different questions (identity vs. email match vs. neither).
+
+### Auto-linking by email is safe here specifically because Google verifies email ownership
+Step 2 above trusts an email match enough to attach a new login method to an
+existing account with zero extra confirmation step. This is only safe because
+Google has already verified the person controls that email address before
+issuing any tokens — so "the email matches" is equivalent to "this is
+provably the same person." This assumption does NOT automatically transfer
+to every OAuth provider — some providers don't verify email ownership before
+authenticating a user. If a second provider is ever added, this exact
+shortcut needs to be re-justified against that provider's actual guarantees,
+not copy-pasted.
+
+### New Google artisan signups: role assigned immediately, profile completed after (superseded — see update below)
+~~New Google signups always start as `role = CUSTOMER`. Becoming an artisan
+still requires the full `/register` form with a shop name.~~ **Superseded.**
+Initial V1 shipped Google auth as customer-only, with artisan-via-Google
+logged as a deliberate scope cut. Implemented shortly after: Google's
+identity token still only provides email, name, and a stable user ID — it
+has no way to supply `shop_name` — so a single-step "Google signup ->
+artisan with a complete profile" was never possible. What changed is *when*
+`shop_name` gets collected, not whether it's required.
+
+**New flow:** the signup screen's role toggle (customer/artisan) is passed
+to `/auth/google/login?intent=...` and round-tripped through the OAuth
+session cookie. For a brand-new person choosing "artisan," the `User` row
+is created immediately with `role=ARTISAN`, but — critically — with **no**
+`Artisan` profile row yet, since `shop_name` isn't known. The backend
+redirects to a dedicated `/complete-artisan-profile` step instead of the
+normal callback; only after that form submits does the `Artisan` row get
+created (`is_approved=False`, same as any new artisan). `POST
+/artisans/complete-profile` is idempotent — a double-submit just returns
+the existing profile rather than erroring, since a profile-completion form
+is exactly the kind of place a duplicate click is likely.
+
+Admin remains fully blocked from Google signup regardless of `intent` —
+`OAuthService` only ever assigns `CUSTOMER` or `ARTISAN`, never `ADMIN`,
+mirroring `AuthService.register`'s existing rejection of self-registered
+admins.
+
+**Existing accounts are still never upgraded by `intent`** — Steps 1 and 2
+of `login_or_register` (known Google identity, or email match to an
+existing local account) ignore `intent` completely. A customer clicking
+an "artisan" Google button on the signup page while already having an
+account does NOT get promoted to artisan; they just log into their
+existing customer account as normal. This is a deliberate security
+boundary: `intent` can only ever apply to accounts that don't exist yet,
+never used to escalate one that already does. Becoming an artisan from an
+existing account remains a separate, explicit action outside this flow —
+not addressed here, and would need its own dedicated feature if wanted
+later.
+
+### CSRF protection: Authlib's `state` parameter via session cookie
+The OAuth flow requires a `state` value to be generated before redirecting
+to Google and verified when Google redirects back — this is what stops a
+forged callback request (e.g. an attacker crafting a fake `/auth/google/callback`
+link with their own authorization code) from being silently accepted.
+Authlib generates and checks this automatically, but needs somewhere to
+store the pending `state` between the two requests — Starlette's
+`SessionMiddleware` (backed by `itsdangerous` for cookie signing) provides
+that. Reuses `jwt_secret` as the session signing key rather than introducing
+a second secret to manage, since this cookie only ever holds a short-lived,
+low-sensitivity state token — never user data.
+
+### Token handoff to frontend: URL fragment, not query param
+After a successful Google login, the backend redirects to
+`{FRONTEND_URL}/oauth-callback#access_token=...` — using `#` (URL fragment)
+rather than `?` (query param) deliberately. Fragments are never sent to any
+server in subsequent requests and never appear in server access logs,
+because browsers strip them before sending a request — unlike query params,
+which travel with the request and get logged everywhere the request touches
+(Render logs, any proxy, etc.). The frontend's `/oauth-callback` page reads
+`window.location.hash` client-side only, stores the token exactly like a
+normal password-login response, then discards it from the URL via
+`navigate(..., { replace: true })`.
+
+### Authorization code exchange stays entirely server-to-server
+The `code` Google returns to `/auth/google/callback` is a single-use,
+short-lived voucher — not identity data itself. The actual exchange (POSTing
+that code + `client_secret` to Google's token endpoint, receiving back a
+verified `id_token`) happens inside `oauth.google.authorize_access_token()`
+on the backend, never in the browser. This is the core security property of
+the "authorization code" grant type: `client_secret` never touches the
+browser, unlike the older implicit-grant flow where tokens were issued
+directly to client-side JS. `id_token` verification (signature, `sub`,
+`email`, `email_verified`) is handled by Authlib against Google's published
+JWKS — not re-implemented by hand.
+
+### Development gotcha: local vs. production `DATABASE_URL` (process note)
+Mid-implementation, `alembic upgrade head` and manual testing were run
+successfully — but a `psql` session opened against the local Docker
+container showed the migration hadn't applied and `oauth_accounts` didn't
+exist. Root cause: `.env`'s `DATABASE_URL` was still pointed at the Render
+production Postgres instance from earlier deployment work, not local Docker
+— so every migration and every test login had actually been running against
+production the whole time, not localhost. Nothing broke (migrations were
+correct), but this could easily have gone the other way. Fixed by switching
+`DATABASE_URL` back to the local `postgresql://postgres:postgres@localhost:5432/marketplace`
+line for day-to-day development, keeping the Render line commented out
+alongside it for when a real deploy is needed. Lesson, consistent with the
+CORS gotcha above: always verify which database a command is actually
+touching before trusting its output — a successful migration log doesn't
+tell you *which* database received it.

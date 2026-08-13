@@ -23,3 +23,11 @@ export function listPendingArtisans() {
 export function approveArtisan(artisanId) {
   return client.patch(`/artisans/${artisanId}/approve`).then((res) => res.data);
 }
+
+// Used only right after a brand-new Google-signup artisan authenticates —
+// creates their Artisan profile (shop_name etc.) since Google never
+// supplies that. Idempotent on the backend, safe to call even on a
+// double-submit.
+export function completeProfile(data) {
+  return client.post("/artisans/complete-profile", data).then((res) => res.data);
+}

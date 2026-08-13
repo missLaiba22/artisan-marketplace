@@ -32,6 +32,19 @@ export function AuthProvider({ children }) {
     return me;
   }
 
+  // Used by the OAuth callback: the backend already issued a valid JWT
+  // (Google's redirect handed it to us via the URL fragment) — we're not
+  // calling /auth/login again, just storing the token we already have and
+  // hydrating the user from it. Kept separate from login() rather than
+  // reusing it, since login() expects email/password credentials to POST,
+  // and this path never has those.
+  async function loginWithToken(token) {
+    localStorage.setItem("access_token", token);
+    const me = await authApi.getMe();
+    setUser(me);
+    return me;
+  }
+
   async function register(data) {
     // Registration doesn't log the user in automatically on the backend —
     // it just creates the account. Caller decides whether to redirect to login.
@@ -43,7 +56,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  const value = { user, loading, login, register, logout };
+  const value = { user, loading, login, loginWithToken, register, logout };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

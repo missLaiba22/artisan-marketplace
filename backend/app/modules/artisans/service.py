@@ -2,6 +2,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.modules.artisans.repository import ArtisanRepository
+from app.modules.artisans.schemas import ArtisanUpdateRequest
 from app.modules.products.repository import ProductRepository
 
 class ArtisanService:
@@ -12,6 +13,34 @@ class ArtisanService:
     def create_profile(self, user_id, shop_name: str):
         # called from AuthService — no commit here, AuthService owns the transaction
         return self.repo.create(user_id=user_id, shop_name=shop_name)
+
+    def complete_onboarding(self, user_id, data: ArtisanUpdateRequest):
+        """
+        Creates the Artisan profile for a user who already has role=ARTISAN
+        but no profile row yet — the state a brand-new Google-signup artisan
+        is in between authentication and finishing their shop details.
+
+        Idempotent by design: if the profile already exists (e.g. a
+        double-submit from a slow network, or the user refreshing the
+        completion page), this returns the existing profile instead of
+        raising a conflict. A profile-completion step is exactly the kind
+        of form where a duplicate click is likely, and failing loudly on
+        the second attempt would be a worse experience than silently
+        no-op'ing — nothing destructive happens either way.
+        """
+        existing = self.repo.get_by_user_id(user_id)
+        if existing is not None:
+            return existing
+
+        artisan = self.repo.create(user_id=user_id, shop_name=data.shop_name)
+        if data.description is not None:
+            artisan.description = data.description
+        if data.location is not None:
+            artisan.location = data.location
+
+        self.db.commit()
+        self.db.refresh(artisan)
+        return artisan
 
     def get_my_profile(self, user_id):
         artisan = self.repo.get_by_user_id(user_id)

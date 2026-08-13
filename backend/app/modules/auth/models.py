@@ -20,7 +20,12 @@ class User(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    # Nullable: a user who signs up purely via Google (or any future OAuth
+    # provider) never sets a local password. NULL means "no local password —
+    # this account can only log in via a linked OAuthAccount," not "forgot
+    # to set one." Login logic must check for None before attempting
+    # verify_password() against it.
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

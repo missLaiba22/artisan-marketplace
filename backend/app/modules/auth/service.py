@@ -12,8 +12,6 @@ class AuthService:
         self.repo = UserRepository(db)
 
     def register(self, data: RegisterRequest):
-        # Admin is never self-registerable — it must be created directly
-        # (seed script / another admin), never through the public endpoint.
         if data.role == UserRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -39,7 +37,16 @@ class AuthService:
 
     def login(self, data: LoginRequest):
         user = self.repo.get_by_email(data.email)
-        if not user or not verify_password(data.password, user.password_hash):
+
+        # user.password_hash is None for Google-only accounts. Checking this
+        # BEFORE calling verify_password() avoids passing None into passlib
+        # (which raises a TypeError, not a clean auth failure) and lets us
+        # give a more honest error message than generic "invalid credentials."
+        if not user or user.password_hash is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        if not verify_password(data.password, user.password_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
         token = create_access_token({"sub": str(user.id), "role": user.role.value})
         return token

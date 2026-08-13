@@ -6,6 +6,8 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import OAuthCallback from "./pages/OAuthCallback";
+import CompleteArtisanProfile from "./pages/CompleteArtisanProfile";
 import ProductDetail from "./pages/ProductDetail";
 import Shop from "./pages/Shop";
 import ShopDetail from "./pages/ShopDetail";
@@ -27,6 +29,8 @@ function App() {
             <Route path="/shops/:artisanId" element={<ShopDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/oauth-callback" element={<OAuthCallback />} />
+            <Route path="/complete-artisan-profile" element={<CompleteArtisanProfile />} />
             <Route path="/products/:productId" element={<ProductDetail />} />
 
             <Route

@@ -38,6 +38,20 @@ def update_my_profile(
     return ArtisanService(db).update_shop_name(current_user.id, data.shop_name)
 
 
+@router.post("/complete-profile", response_model=ArtisanProfileResponse, status_code=201)
+def complete_artisan_profile(
+    data: ArtisanUpdateRequest,
+    # require_role, NOT require_approved_artisan — that dependency queries
+    # for an Artisan row that, in this exact flow, doesn't exist yet. This
+    # endpoint's whole purpose is to create it. Only role=ARTISAN is needed
+    # to reach here (already guaranteed for a Google-signup artisan at
+    # account-creation time).
+    current_user = Depends(require_role(UserRole.ARTISAN)),
+    db: Session = Depends(get_db),
+):
+    return ArtisanService(db).complete_onboarding(current_user.id, data)
+
+
 @router.get("/pending", response_model=list[ArtisanProfileResponse])
 def list_pending_artisans(
     current_user = Depends(require_role(UserRole.ADMIN)),
