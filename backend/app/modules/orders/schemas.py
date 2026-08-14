@@ -1,8 +1,10 @@
 # app/modules/orders/schemas.py
+
 from pydantic import BaseModel, Field
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
+
 from app.modules.orders.models import PaymentStatus, OrderStatus
 
 
@@ -13,6 +15,11 @@ class CheckoutItemRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     items: list[CheckoutItemRequest] = Field(min_length=1)
+
+
+class CheckoutSessionResponse(BaseModel):
+    checkout_id: UUID
+    checkout_url: str  # Stripe-hosted payment page
 
 
 class OrderItemResponse(BaseModel):

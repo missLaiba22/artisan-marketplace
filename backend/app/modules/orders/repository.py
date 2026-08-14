@@ -38,6 +38,12 @@ class CheckoutRepository:
             .order_by(Checkout.created_at.desc())
             .first()
         )
+    def get_by_stripe_session_id(self, stripe_session_id: str) -> Checkout | None:
+        return (
+            self.db.query(Checkout)
+            .filter(Checkout.stripe_session_id == stripe_session_id)
+            .first()
+        )
 
 
 class OrderRepository:
@@ -54,7 +60,15 @@ class OrderRepository:
         return self.db.query(Order).filter(Order.id == order_id).first()
 
     def list_by_artisan(self, artisan_id) -> list[Order]:
-        return self.db.query(Order).filter(Order.artisan_id == artisan_id).all()
+        return (
+            self.db.query(Order)
+            .join(Checkout, Order.checkout_id == Checkout.id)
+            .filter(
+                Order.artisan_id == artisan_id,
+                Checkout.payment_status == PaymentStatus.PAID,
+            )
+            .all()
+        )
 
     def list_by_checkout(self, checkout_id) -> list[Order]:
         return self.db.query(Order).filter(Order.checkout_id == checkout_id).all()
