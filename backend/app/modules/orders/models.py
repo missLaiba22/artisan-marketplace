@@ -12,6 +12,7 @@ class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
     PAID = "paid"
     FAILED = "failed"
+    EXPIRED = "expired"   # NEW — customer never completed Stripe checkout
 
 
 class OrderStatus(str, enum.Enum):
@@ -30,8 +31,8 @@ class Checkout(Base):
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.PENDING, nullable=False)
     payment_reference: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
     orders: Mapped[list["Order"]] = relationship(back_populates="checkout")
+    stripe_session_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
 
 
 class Order(Base):
