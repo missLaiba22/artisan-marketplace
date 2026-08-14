@@ -8,6 +8,7 @@ from app.modules.auth.oauth_router import router as oauth_router
 from app.modules.artisans.router import router as artisans_router
 from app.modules.products.router import router as products_router
 from app.modules.orders.router import router as orders_router
+from app.modules.orders.webhook_router import router as stripe_webhook_router
 
 app = FastAPI(title="Marketplace API")
 
@@ -31,3 +32,4 @@ app.include_router(oauth_router)
 app.include_router(artisans_router)
 app.include_router(products_router)
 app.include_router(orders_router)
+app.include_router(stripe_webhook_router)

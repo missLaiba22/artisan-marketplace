@@ -1,23 +1,39 @@
 # app/modules/orders/router.py
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.modules.auth.dependencies import require_role
 from app.modules.auth.models import UserRole
 from app.modules.artisans.dependencies import require_approved_artisan
-from app.modules.orders.schemas import CheckoutRequest, CheckoutResponse, OrderResponse
+from app.modules.orders.schemas import (
+    CheckoutRequest,
+    CheckoutResponse,
+    CheckoutSessionResponse,
+    OrderResponse,
+)
 from app.modules.orders.service import OrderService
+
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@router.post("/checkout", response_model=CheckoutResponse, status_code=201)
+@router.post("/checkout", response_model=CheckoutSessionResponse, status_code=201)
 def checkout(
     data: CheckoutRequest,
     current_user=Depends(require_role(UserRole.CUSTOMER)),
     db: Session = Depends(get_db),
 ):
-    return OrderService(db).create_order(current_user.id, data)
+    checkout, checkout_url = OrderService(db).create_order(
+        current_user.id,
+        data,
+    )
+
+    return CheckoutSessionResponse(
+        checkout_id=checkout.id,
+        checkout_url=checkout_url,
+    )
 
 
 @router.get("/me/artisan-orders", response_model=list[OrderResponse])
@@ -42,6 +58,11 @@ def get_my_latest_order(
     db: Session = Depends(get_db),
 ):
     checkout = OrderService(db).get_latest_checkout_for_customer(current_user.id)
+
     if checkout is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No order history found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No order history found",
+        )
+
     return checkout
