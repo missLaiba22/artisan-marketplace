@@ -13,7 +13,14 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
+
+    # Frontend
     frontend_url: str = "http://localhost:5173"
+
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_session_expires_minutes: int = 30
 
     @field_validator("database_url")
     @classmethod
