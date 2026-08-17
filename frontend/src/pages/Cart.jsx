@@ -12,23 +12,24 @@ export default function Cart() {
   const [submitting, setSubmitting] = useState(false);
 
   async function handleCheckout() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      const checkoutResult = await ordersApi.checkout({
-        items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
-      });
-      saveCheckout(checkoutResult);
-      clearCart();
-      navigate("/order-confirmation", { state: { checkout: checkoutResult } });
-    } catch (err) {
-      // Most likely case here: stock changed between add-to-cart and checkout
-      // (backend re-validates and locks rows at checkout time).
-      setError(err.response?.data?.detail ?? "Checkout failed. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  setError(null);
+  setSubmitting(true);
+  try {
+    const { checkout_url } = await ordersApi.checkout({
+      items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
+    });
+    // Full-page redirect to Stripe's hosted checkout — not a client-side
+    // navigate(). The cart is cleared now (stock is already reserved
+    // server-side at this point, whether the customer completes payment
+    // or not — an abandoned Stripe session is cleaned up separately by
+    // the checkout.session.expired webhook, not by anything client-side).
+    clearCart();
+    window.location.href = checkout_url;
+  } catch (err) {
+    setError(err.response?.data?.detail ?? "Checkout failed. Please try again.");
+    setSubmitting(false);
   }
+}
 
   if (items.length === 0) {
     return (

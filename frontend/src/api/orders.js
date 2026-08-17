@@ -16,3 +16,6 @@ export function listMyOrderHistory() {
 export function getMyLatestOrder() {
   return client.get("/orders/me/latest").then((res) => res.data);
 }
+export function getCheckoutBySession(sessionId) {
+  return client.get(`/orders/session/${sessionId}`).then((res) => res.data);
+}
