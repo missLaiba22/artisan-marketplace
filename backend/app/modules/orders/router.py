@@ -66,3 +66,10 @@ def get_my_latest_order(
         )
 
     return checkout
+@router.get("/session/{stripe_session_id}", response_model=CheckoutResponse)
+def get_checkout_by_session(
+    stripe_session_id: str,
+    current_user=Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+):
+    return OrderService(db).get_checkout_by_session_id(current_user.id, stripe_session_id)

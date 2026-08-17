@@ -7,6 +7,11 @@ from app.modules.orders.repository import CheckoutRepository, OrderRepository, O
 from app.modules.orders.schemas import CheckoutRequest
 from app.modules.orders.models import PaymentStatus, OrderStatus
 from app.modules.products.repository import ProductRepository
+import logging
+
+
+
+logger = logging.getLogger(__name__)
 
 stripe.api_key = settings.stripe_secret_key
 
@@ -131,12 +136,32 @@ class OrderService:
 
     def get_latest_checkout_for_customer(self, customer_id):
         return self.checkout_repo.get_latest_by_customer(customer_id)
+
+    def get_checkout_by_session_id(self, customer_id, stripe_session_id: str):
+        checkout = self.checkout_repo.get_by_stripe_session_id(stripe_session_id)
+        if checkout is None or checkout.customer_id != customer_id:
+        # Same 403-vs-404 reasoning as products/artisans: a session_id
+        # belonging to someone else should not be distinguishable from
+        # one that doesn't exist — don't leak "this session exists but
+        # isn't yours" to an unauthenticated-feeling probe.
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Checkout not found")
+        return  checkout
+
     def mark_checkout_paid(self, stripe_session_id: str):
         checkout = self.checkout_repo.get_by_stripe_session_id(stripe_session_id)
         if checkout is None:
             # Shouldn't happen if session_id was stored correctly at
             # creation — but a missing row must not crash the handler,
-            # or Stripe will retry this event forever.
+            # or Stripe will retry this event forever. Still, this could
+            # mean a real payment is being silently dropped (e.g. the
+            # commit that stored stripe_session_id on Checkout failed),
+            # so log it rather than fail completely silently.
+            logger.warning(
+                "Stripe webhook checkout.session.completed for unknown "
+                "stripe_session_id=%s — payment may be lost if this "
+                "session should have existed in our DB",
+                stripe_session_id,
+            )
             return
         if checkout.payment_status == PaymentStatus.PAID:
             return  # idempotent no-op — duplicate/retried webhook
@@ -146,6 +171,13 @@ class OrderService:
     def mark_checkout_expired(self, stripe_session_id: str):
         checkout = self.checkout_repo.get_by_stripe_session_id(stripe_session_id)
         if checkout is None:
+            # Same reasoning as mark_checkout_paid above — log instead of
+            # failing silently, don't raise (would cause infinite Stripe retries).
+            logger.warning(
+                "Stripe webhook checkout.session.expired for unknown "
+                "stripe_session_id=%s — expiry could not be applied",
+                stripe_session_id,
+            )
             return
         if checkout.payment_status != PaymentStatus.PENDING:
             return  # already paid, or already expired — don't re-release stock
