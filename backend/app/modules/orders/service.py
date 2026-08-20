@@ -7,6 +7,8 @@ from app.modules.orders.repository import CheckoutRepository, OrderRepository, O
 from app.modules.orders.schemas import CheckoutRequest
 from app.modules.orders.models import PaymentStatus, OrderStatus
 from app.modules.products.repository import ProductRepository
+from decimal import Decimal, ROUND_HALF_UP
+from app.modules.promotions.service import PromotionService
 import logging
 
 
@@ -23,14 +25,17 @@ class OrderService:
         self.order_repo = OrderRepository(db)
         self.item_repo = OrderItemRepository(db)
         self.product_repo = ProductRepository(db)
-
+        self.promotion_service = PromotionService(db)
     def create_order(self, customer_id, data: CheckoutRequest):
-        # --- Steps 1-7: UNCHANGED from the mock flow ---
-        # Lock → validate stock → compute total → create Checkout → group
-        # by artisan → create Orders + OrderItems → decrement stock.
-        # This is still the point where stock gets reserved (Q1: option A).
+        # Canonical lock order — sort by product_id before locking, so two
+        # concurrent checkouts sharing products always acquire locks in the
+        # same order regardless of client-submitted array order. Closes a
+        # pre-existing deadlock gap (architecture review point 5), unrelated
+        # to promos but cheap to fix while this method is already open.
+        sorted_items = sorted(data.items, key=lambda i: str(i.product_id))
+
         locked_products = {}
-        for item in data.items:
+        for item in sorted_items:
             product = self.product_repo.get_by_id_for_update(item.product_id)
             if product is None:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {item.product_id} not found")
@@ -38,7 +43,7 @@ class OrderService:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Product '{product.name}' is no longer available")
             locked_products[item.product_id] = product
 
-        for item in data.items:
+        for item in sorted_items:
             product = locked_products[item.product_id]
             if product.stock_quantity < item.quantity:
                 raise HTTPException(
@@ -46,53 +51,97 @@ class OrderService:
                     f"Insufficient stock for '{product.name}': requested {item.quantity}, available {product.stock_quantity}",
                 )
 
-        total_amount = sum(
-            locked_products[item.product_id].price * item.quantity
-            for item in data.items
-        )
-
-        checkout = self.checkout_repo.create(customer_id=customer_id, total_amount=total_amount)
-        # payment_status stays PENDING — CheckoutRepository.create() already
-        # defaults it that way, nothing to change here.
+        # Promo locked AFTER products, always — fixed lock order relative
+        # to products (architecture review point 5).
+        promo, eligible_product_ids = None, set()
+        if data.promo_code:
+            cart_product_ids = {item.product_id for item in sorted_items}
+            promo, eligible_product_ids = self.promotion_service.validate_and_lock(data.promo_code, cart_product_ids)
 
         items_by_artisan: dict = {}
-        for item in data.items:
+        for item in sorted_items:
             product = locked_products[item.product_id]
             items_by_artisan.setdefault(product.artisan_id, []).append((product, item.quantity))
 
-        # line_items accumulates alongside order creation — same loop,
-        # one extra list being built, since we need Stripe's view of the
-        # cart (name/price/qty) and we already have every product in hand.
-        line_items = []
+        # --- COMPUTE PASS (pure, in-memory, Decimal-only) ---
+        # No DB writes here. Determines charged_total and discounted_unit_price
+        # per line BEFORE anything is persisted, so Checkout can be created
+        # once with its real, final total_amount — no placeholder mutation
+        # (architecture review point 8).
+        if promo:
+            eligible_lines = [
+                {"product_id": product.id, "unit_price": product.price, "quantity": quantity}
+                for artisan_id, product_items in items_by_artisan.items()
+                for product, quantity in product_items
+                if product.id in eligible_product_ids
+            ]
+            discounts = self.promotion_service.compute_discounts(promo, eligible_lines)
+        else:
+            discounts = {}
+
+        computed_lines = []  # one entry per (artisan_id, product, quantity, charged_total, discount_info)
+        total_amount = Decimal("0.00")
+        total_discount = Decimal("0.00")
         for artisan_id, product_items in items_by_artisan.items():
-            order = self.order_repo.create(checkout_id=checkout.id, artisan_id=artisan_id)
-            # Order.status stays PENDING (its existing default) — that field
-            # answers "what's happened to this order," not "is it paid."
             for product, quantity in product_items:
-                self.item_repo.create(
-                    order_id=order.id,
-                    product_id=product.id,
-                    product_name=product.name,
-                    unit_price=product.price,
-                    quantity=quantity,
-                )
-                product.stock_quantity -= quantity  # reserved now, per Q1
-
-                line_items.append({
-                    "price_data": {
-                        "currency": "usd",  # TODO: revisit if PKR support matters later
-                        "product_data": {"name": product.name},
-                        "unit_amount": int(product.price * 100),  # dollars -> cents
-                    },
-                    "quantity": quantity,
+                original_line_subtotal = product.price * quantity
+                if product.id in discounts:
+                    line_discount = discounts[product.id]["line_discount"]
+                    charged_total = discounts[product.id]["charged_total"]
+                    total_discount += line_discount
+                else:
+                    charged_total = original_line_subtotal
+                computed_lines.append({
+                    "artisan_id": artisan_id, "product": product, "quantity": quantity,
+                    "charged_total": charged_total,
+                    "promotion_id": promo.id if product.id in discounts else None,
                 })
+                total_amount += charged_total  # Decimal end-to-end, never derived from Stripe's int cents
 
-        # --- Step 8: create the Stripe Checkout Session ---
-        # This replaces the old "mock-mark PAID" step. We flush (not
-        # commit) first so checkout.id exists and is visible for the
-        # idempotency key and success_url, but nothing is durable yet —
-        # if Stripe's API call fails, the whole transaction still rolls
-        # back cleanly on the exception, same atomicity guarantee as before.
+        # --- PERSIST PASS ---
+        checkout = self.checkout_repo.create(customer_id=customer_id, total_amount=total_amount)
+
+        line_items = []
+        orders_by_artisan = {}
+        for line in computed_lines:
+            artisan_id = line["artisan_id"]
+            if artisan_id not in orders_by_artisan:
+                orders_by_artisan[artisan_id] = self.order_repo.create(checkout_id=checkout.id, artisan_id=artisan_id)
+            order = orders_by_artisan[artisan_id]
+            product, quantity = line["product"], line["quantity"]
+            charged_total = line["charged_total"]
+
+            discounted_unit_price = None
+            if line["promotion_id"] is not None:
+                # Per-unit value for the receipt only — the amount actually
+                # charged to Stripe uses charged_total directly (see below),
+                # so this can't leak money even if it doesn't divide evenly
+                # per unit (architecture review point 2 caveat).
+                discounted_unit_price = (charged_total / quantity).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            self.item_repo.create(
+                order_id=order.id, product_id=product.id, product_name=product.name,
+                unit_price=product.price, discounted_unit_price=discounted_unit_price,
+                promotion_id=line["promotion_id"], quantity=quantity,
+            )
+            product.stock_quantity -= quantity
+
+            # quantity=1 + unit_amount=full line total — sidesteps needing
+            # Stripe's per-unit amount to divide evenly out of a discounted
+            # line total. The exact amount charged always matches charged_total.
+            cents = int((charged_total * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            line_items.append({
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": f"{product.name} x{quantity}"},
+                    "unit_amount": cents,
+                },
+                "quantity": 1,
+            })
+
+        if promo:
+            self.promotion_service.record_reservation(promo, checkout.id, customer_id, total_discount)
+
         self.db.flush()
 
         try:
@@ -106,19 +155,17 @@ class OrderService:
                 idempotency_key=f"checkout-{checkout.id}",
             )
         except stripe.StripeError as e:
-            # Anything from a bad API key to a Stripe-side outage lands here.
-            # The whole transaction rolls back (nothing was committed yet) —
-            # stock reservation and the Checkout/Order rows all vanish
-            # together, exactly the atomicity guarantee DECISIONS.md already
-            # established for this method.
+            # Explicit rollback — was implicit-via-session-close before.
+            # Same atomicity outcome, now visible in the code rather than
+            # inferred from get_db()'s teardown behavior (architecture
+            # review point 4).
+            self.db.rollback()
             raise HTTPException(
                 status.HTTP_502_BAD_GATEWAY,
                 f"Could not start payment: {e.user_message or 'please try again'}",
             )
 
         checkout.stripe_session_id = session.id
-
-        # --- Step 9: single commit — same rule as before, new content ---
         self.db.commit()
         self.db.refresh(checkout)
         return checkout, session.url
@@ -150,12 +197,6 @@ class OrderService:
     def mark_checkout_paid(self, stripe_session_id: str):
         checkout = self.checkout_repo.get_by_stripe_session_id(stripe_session_id)
         if checkout is None:
-            # Shouldn't happen if session_id was stored correctly at
-            # creation — but a missing row must not crash the handler,
-            # or Stripe will retry this event forever. Still, this could
-            # mean a real payment is being silently dropped (e.g. the
-            # commit that stored stripe_session_id on Checkout failed),
-            # so log it rather than fail completely silently.
             logger.warning(
                 "Stripe webhook checkout.session.completed for unknown "
                 "stripe_session_id=%s — payment may be lost if this "
@@ -164,8 +205,9 @@ class OrderService:
             )
             return
         if checkout.payment_status == PaymentStatus.PAID:
-            return  # idempotent no-op — duplicate/retried webhook
+            return
         checkout.payment_status = PaymentStatus.PAID
+        self.promotion_service.confirm_redemption(checkout.id)  # NEW
         self.db.commit()
 
     def mark_checkout_expired(self, stripe_session_id: str):
@@ -183,13 +225,13 @@ class OrderService:
             return  # already paid, or already expired — don't re-release stock
 
         for order in self.order_repo.list_by_checkout(checkout.id):
-            for item in self.item_repo.list_by_order(order.id):
-                # Lock the same way checkout does — a product could be mid
-                # -checkout in another transaction right now.
+            items = sorted(self.item_repo.list_by_order(order.id), key=lambda i: str(i.product_id))
+            for item in items:
                 product = self.product_repo.get_by_id_for_update(item.product_id)
                 if product is not None:
                     product.stock_quantity += item.quantity
             order.status = OrderStatus.CANCELLED
 
         checkout.payment_status = PaymentStatus.EXPIRED
+        self.promotion_service.release_redemption(checkout.id)  # NEW
         self.db.commit()

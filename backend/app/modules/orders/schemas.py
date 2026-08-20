@@ -15,6 +15,7 @@ class CheckoutItemRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     items: list[CheckoutItemRequest] = Field(min_length=1)
+    promo_code: str | None = None
 
 
 class CheckoutSessionResponse(BaseModel):
@@ -27,6 +28,7 @@ class OrderItemResponse(BaseModel):
     product_id: UUID
     product_name: str
     unit_price: Decimal
+    discounted_unit_price: Decimal | None
     quantity: int
 
     class Config:

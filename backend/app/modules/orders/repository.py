@@ -78,12 +78,15 @@ class OrderItemRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, order_id, product_id, product_name: str, unit_price, quantity: int) -> OrderItem:
+    def create(self, order_id, product_id, product_name: str, unit_price, quantity: int,
+               discounted_unit_price=None, promotion_id=None) -> OrderItem:
         item = OrderItem(
             order_id=order_id,
             product_id=product_id,
             product_name=product_name,
             unit_price=unit_price,
+            discounted_unit_price=discounted_unit_price,
+            promotion_id=promotion_id,
             quantity=quantity,
         )
         self.db.add(item)

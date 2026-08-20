@@ -57,5 +57,8 @@ class OrderItem(Base):
     product_name: Mapped[str] = mapped_column(String, nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    discounted_unit_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    promotion_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("promotions.id"), nullable=True)
+
 
     order: Mapped["Order"] = relationship(back_populates="items")
