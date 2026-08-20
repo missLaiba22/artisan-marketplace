@@ -16,6 +16,7 @@ from app.modules.auth.oauth_models import OAuthAccount
 from app.modules.artisans.models import Artisan
 from app.modules.products.models import Product
 from app.modules.orders.models import Order, OrderItem, Checkout
+from app.modules.promotions.models import Promotion, PromotionProduct, PromotionRedemption
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
