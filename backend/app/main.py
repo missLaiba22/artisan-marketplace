@@ -9,7 +9,7 @@ from app.modules.artisans.router import router as artisans_router
 from app.modules.products.router import router as products_router
 from app.modules.orders.router import router as orders_router
 from app.modules.orders.webhook_router import router as stripe_webhook_router
-
+from app.modules.promotions.router import router as promotions_router
 app = FastAPI(title="Marketplace API")
 
 app.add_middleware(
@@ -33,3 +33,4 @@ app.include_router(artisans_router)
 app.include_router(products_router)
 app.include_router(orders_router)
 app.include_router(stripe_webhook_router)
+app.include_router(promotions_router)
