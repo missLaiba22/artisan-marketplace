@@ -11,25 +11,32 @@ export default function Cart() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [promoCode, setPromoCode] = useState("");
+
   async function handleCheckout() {
-  setError(null);
-  setSubmitting(true);
-  try {
-    const { checkout_url } = await ordersApi.checkout({
-      items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
-    });
-    // Full-page redirect to Stripe's hosted checkout — not a client-side
-    // navigate(). The cart is cleared now (stock is already reserved
-    // server-side at this point, whether the customer completes payment
-    // or not — an abandoned Stripe session is cleaned up separately by
-    // the checkout.session.expired webhook, not by anything client-side).
-    clearCart();
-    window.location.href = checkout_url;
-  } catch (err) {
-    setError(err.response?.data?.detail ?? "Checkout failed. Please try again.");
-    setSubmitting(false);
+    setError(null);
+    setSubmitting(true);
+    try {
+      const payload = {
+        items: items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.quantity,
+        })),
+      };
+
+      const trimmed = promoCode.trim();
+      if (trimmed) payload.promo_code = trimmed;
+
+      const { checkout_url } = await ordersApi.checkout(payload);
+      clearCart();
+      window.location.href = checkout_url;
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ?? "Checkout failed. Please try again."
+      );
+      setSubmitting(false);
+    }
   }
-}
 
   if (items.length === 0) {
     return (
@@ -57,18 +64,25 @@ export default function Cart() {
                 e.currentTarget.src = getImageFallbackDataUri();
               }}
             />
+
             <div className="flex-1">
               <p className="font-medium">{product.name}</p>
-              <p className="font-mono text-sm text-brass">${Number(product.price).toFixed(2)}</p>
+              <p className="font-mono text-sm text-brass">
+                ${Number(product.price).toFixed(2)}
+              </p>
             </div>
+
             <input
               type="number"
               min={1}
               max={product.stock_quantity}
               value={quantity}
-              onChange={(e) => updateQuantity(product.id, Number(e.target.value))}
+              onChange={(e) =>
+                updateQuantity(product.id, Number(e.target.value))
+              }
               className="w-16 border border-ink/25 rounded px-2 py-1 bg-white/40"
             />
+
             <button
               onClick={() => removeItem(product.id)}
               className="text-xs font-mono uppercase text-clay hover:underline"
@@ -81,7 +95,23 @@ export default function Cart() {
 
       <div className="flex items-center justify-between mt-8 pt-4 border-t border-ink/20">
         <span className="font-medium">Total</span>
-        <span className="font-mono text-xl text-brass">${totalPrice.toFixed(2)}</span>
+        <span className="font-mono text-xl text-brass">
+          ${totalPrice.toFixed(2)}
+        </span>
+      </div>
+
+      <div className="mt-6">
+        <label className="block text-xs font-mono uppercase tracking-wide text-ink-soft mb-1.5">
+          Promo code{" "}
+          <span className="normal-case text-ink-soft/70">(optional)</span>
+        </label>
+
+        <input
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value)}
+          placeholder="SUMMER20"
+          className="w-full border border-ink/25 rounded px-3 py-2 bg-white/40 focus:border-brass outline-none uppercase"
+        />
       </div>
 
       {error && (

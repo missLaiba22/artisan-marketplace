@@ -99,7 +99,11 @@ function OrderCard({ checkout, expanded = false }) {
                 {money(
                   order.items.reduce(
                     (sum, item) =>
-                      sum + Number(item.unit_price) * item.quantity,
+                      sum +
+                      (item.discounted_unit_price
+                        ? Number(item.discounted_unit_price)
+                        : Number(item.unit_price)) *
+                        item.quantity,
                     0
                   )
                 )}
@@ -117,11 +121,20 @@ function OrderCard({ checkout, expanded = false }) {
 
                     <p className="text-ink-soft mt-1">
                       Qty {item.quantity} · Unit {money(item.unit_price)}
+                      {item.discounted_unit_price && (
+                        <span className="text-brass ml-1">
+                          → {money(item.discounted_unit_price)}
+                        </span>
+                      )}
                     </p>
                   </div>
 
                   <span className="font-mono text-brass">
-                    {money(Number(item.unit_price) * item.quantity)}
+                    {money(
+                      (item.discounted_unit_price
+                        ? Number(item.discounted_unit_price)
+                        : Number(item.unit_price)) * item.quantity
+                    )}
                   </span>
                 </li>
               ))}
