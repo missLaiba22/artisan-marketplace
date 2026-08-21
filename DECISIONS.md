@@ -545,3 +545,146 @@ handler queries by by. If the payment gateway ever changed in the future,
 as a concept ("some reference to look this payment up by") should survive
 that change — so it stays a separate field even though it currently holds
 the identical value.
+
+## Promotions Module
+
+### Ownership: per-artisan, globally unique codes
+Considered per-artisan-unique codes (`UniqueConstraint(artisan_id, code)`) but rejected —
+checkout has a single flat promo-code text field with no "which shop" context, so two
+artisans both owning `SUMMER20` would make the code ambiguous to resolve at redemption
+time. Global uniqueness means artisans share one namespace and could theoretically
+collide on a desired code — accepted as a UI/convention problem (suggest shop-prefixed
+codes), not a schema problem, given current marketplace scale.
+
+### Explicit product targeting via `PromotionProduct`, not artisan-wide
+A promo applies only to products the artisan explicitly selects, not "everything I sell."
+Many-to-many join table (`PromotionProduct`) rather than a denormalized product list,
+consistent with how relational associations are modeled everywhere else in this project.
+At checkout, a promo's effect is computed as the intersection of `eligible_product_ids`
+and the cart's product IDs — a code with zero overlap is a 400, not a silent no-op,
+since silently ignoring a code a customer explicitly typed in would look like a bug.
+
+### Reservation ledger (`PromotionRedemption`), not a plain counter — same pattern reused across two domains now
+Second time this project has needed "track a limited resource across an async, possibly-
+abandoned payment lifecycle" — first was product stock (`stock_quantity`, decremented at
+session creation, restored on `checkout.session.expired`). A plain `Promotion.times_used`
+counter, incremented at checkout-creation time, would have the identical flaw the original
+mock-payment version of stock had: an abandoned Stripe session permanently burns a
+redemption slot on a code nobody actually used.
+
+Fix: `PromotionRedemption` mirrors the stock pattern exactly — one row per checkout,
+status lifecycle `RESERVED → CONFIRMED` (on `checkout.session.completed`) or
+`RESERVED → RELEASED` (on `checkout.session.expired`). Capacity checks
+(`count_active_redemptions`) count `RESERVED + CONFIRMED` rows, under a lock on the
+`Promotion` row — never read `times_used` for this. `times_used` is demoted to a
+display-only cache, updated only on confirm. This is the generalized version of the
+stock-reservation principle: **any capped resource touched by an async payment flow
+needs a reservation ledger with an explicit release path, not a single mutable counter.**
+
+### FIXED discount: total off eligible subtotal, not per-unit
+Initial design applied a FIXED discount independently to every unit of every eligible
+product — a "Rs. 500 off" promo on 2 eligible products with 3 units each would have
+discounted Rs. 3000, not the Rs. 500 a customer would expect. Caught in architecture
+review before implementation, not in testing.
+
+Corrected semantics: `total_discount = min(discount_value, eligible_subtotal)`, then
+allocated proportionally across eligible line items by each item's share of the eligible
+subtotal. PERCENTAGE has no such problem — it's applied independently per line, no
+cross-item allocation needed, which is part of why it's the simpler case.
+
+### Proportional-split rounding: last line absorbs the remainder
+Allocating a FIXED discount proportionally and rounding each line's share independently
+to the nearest cent can leave the sum off by a cent or two from the true total discount
+(the classic "split the bill" rounding problem). Fixed by computing every line's discount
+normally except the last eligible line, which instead takes `total_discount - sum_so_far`.
+Guarantees the allocated amounts always sum exactly to the intended total — no drift,
+no silent under/over-discounting.
+
+### Original price never overwritten; discount is a separate, visible field
+`OrderItem.unit_price` always holds the true product price. A new nullable
+`OrderItem.discounted_unit_price` holds what was actually charged, only set when a
+promotion applied. Same reasoning as why `OrderItem` snapshots `product_name` — a
+receipt must show the truth of what happened, not have its base facts silently rewritten
+by a downstream calculation. The amount actually sent to Stripe uses the computed
+`charged_total` directly (not a re-derived per-unit price), so even a non-evenly-divisible
+per-unit discount can't leak money — `discounted_unit_price` is display-only math for the
+receipt, never the source of the Stripe charge amount.
+
+### Lock ordering: products, then promotion — always, everywhere
+`create_order()` locks every cart product first, then optionally locks the promotion —
+fixed order, never reversed, to avoid a classic lock-ordering deadlock between two
+concurrent transactions. Audited every other transaction path that touches either table:
+`mark_checkout_paid` never touches products; `mark_checkout_expired` touches products but
+never locks the `Promotion` row itself (only `PromotionRedemption`, a different table) —
+so no cross-path conflict exists beyond `create_order()`'s single, consistent ordering.
+
+While auditing this, found a **pre-existing, promo-unrelated deadlock gap**: products were
+locked in whatever order the client's request array happened to list them — two concurrent
+checkouts sharing two products, submitted with the array in opposite order, could already
+deadlock before promotions ever existed. Fixed opportunistically by sorting `data.items`
+by `product_id` before locking, in both `create_order()` and the stock-release loop in
+`mark_checkout_expired()` — establishing one canonical lock order system-wide, not just
+for the new feature.
+
+### `total_amount` computed in pure Decimal, never round-tripped through Stripe's int cents
+Early draft derived `checkout.total_amount` by summing Stripe's integer-cents `unit_amount`
+fields and dividing by 100 — `int / 100` in Python 3 is true division, which returns
+`float`. That would have written a float into a `Numeric(10,2)` column, the exact class of
+bug already forbidden project-wide. Fixed by reverting to the original pattern: compute
+`total_amount` directly in Decimal, in the same pass that computes each line's
+`charged_total`, and only convert to Stripe's integer-cents format as the very last step,
+right before the API call — Decimal money math never touches an int/float boundary until
+it has to leave the process.
+
+### Stripe line items: one line per cart item at its full charged total, quantity fixed at 1
+Rather than sending Stripe a per-unit `unit_amount` and a `quantity`, each line item sends
+`quantity: 1` and the item's full `charged_total` (already correctly discounted and
+rounded) as `unit_amount`. Avoids needing a discounted line total to divide evenly back
+into a per-unit cents figure — the amount Stripe charges is always exactly the
+already-computed, already-correct total, no secondary rounding step introduced at the
+Stripe boundary.
+
+### DB↔Stripe transaction boundary: explicit rollback, no outbox/saga needed
+Traced both failure modes explicitly rather than assuming safety:
+- **Stripe API call fails** → now does an explicit `self.db.rollback()` before raising
+  (previously relied on `get_db()`'s implicit rollback-on-close, which worked but wasn't
+  visible in the code as an intentional guarantee).
+- **Stripe succeeds, then `db.commit()` fails** (rare — DB connection drop, etc.) → the
+  request 500s, so the customer never receives `checkout_url` and never reaches Stripe's
+  payment page. The orphaned Stripe Session simply self-expires at its configured window;
+  when `checkout.session.expired` fires, `mark_checkout_expired` looks up the
+  `stripe_session_id`, finds no matching row (since that transaction never committed),
+  logs the existing "unknown session_id" warning, and returns cleanly. This already
+  degrades gracefully with the code that already existed for a different reason — no
+  outbox pattern, no two-phase commit, no additional infrastructure needed at this scale.
+
+### Migration enum values must match Python enum **names**, not `.value`s (real bug, hit and fixed)
+SQLAlchemy's `Enum(SomeEnum)` column type sends the Python enum member's **name** to
+Postgres by default, not its `.value` — e.g. `DiscountType.PERCENTAGE` sends the string
+`"PERCENTAGE"`, not `"percentage"`. The first version of this migration defined the
+Postgres enum type using lowercase `.value` strings (`'percentage', 'fixed'`), which
+doesn't match what SQLAlchemy actually sends — every insert failed with
+`invalid input value for enum discounttype: "PERCENTAGE"`.
+
+This turned out to be a pre-existing project convention I broke, not a new decision: every
+other enum in this codebase (`userrole`, `orderstatus`, `paymentstatus`) already stores
+member **names** in Postgres (`sa.Enum('CUSTOMER', 'ARTISAN', 'ADMIN', name='userrole')`).
+Fixed by matching that existing pattern — migration now defines `discounttype` and
+`redemptionstatus` using uppercase names. Lesson: when adding a new enum, check how
+existing enums in the same codebase are stored before assuming `.value` is what gets
+persisted — SQLAlchemy's default behavior here is easy to get wrong silently until an
+actual insert fails.
+
+### Scoped out of this pass (explicit deferrals)
+- No "preview discount before checkout" endpoint — would require a new validate-only
+  route just to show a number the server recomputes seconds later anyway at real checkout.
+  The cart shows the pre-discount total; the true, discounted total appears on
+  `OrderConfirmation` once the server has actually applied it.
+- No per-customer redemption limit — `PromotionRedemption.customer_id` exists (nullable,
+  unenforced) specifically so this is a future WHERE-clause addition, not a migration,
+  the same forward-compatible-column pattern already used for `Product.image_url`'s V1→V2
+  path.
+- No artisan-facing deactivate/delete UI for promo codes yet — create + list only.
+- Invalid promo code fails checkout entirely (400, cart preserved) rather than silently
+  dropping the code and proceeding at full price — chosen because a silent drop could
+  read as "the code should have worked," with no visible explanation to the customer.

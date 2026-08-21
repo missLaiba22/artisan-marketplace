@@ -43,3 +43,6 @@ typing-inspection==0.4.2
 typing_extensions==4.16.0
 urllib3==2.7.0
 uvicorn==0.51.0
+sentence-transformers==3.3.1
+pgvector==0.3.6
+groq==0.13.0

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_session_expires_minutes: int = 30
+    groq_api_key: str = ""
 
     @field_validator("database_url")
     @classmethod
