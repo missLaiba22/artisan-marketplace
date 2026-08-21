@@ -16,6 +16,7 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import MyOrders from "./pages/MyOrders";
 import ArtisanDashboard from "./pages/ArtisanDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import ChatWidget from "./components/ChatWidget";
 
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
               }
             />
           </Routes>
+          <ChatWidget />
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

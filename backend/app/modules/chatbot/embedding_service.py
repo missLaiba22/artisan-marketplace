@@ -1,14 +1,10 @@
-from sentence_transformers import SentenceTransformer
-
-_model = None  # lazy-loaded singleton — loading the model is slow (~1-2s), don't do it per-request
-
-
-def get_embedding_model() -> SentenceTransformer:
+_model = None
+def get_embedding_model():
     global _model
     if _model is None:
+        from sentence_transformers import SentenceTransformer  # deferred to first query
         _model = SentenceTransformer("all-MiniLM-L6-v2")
     return _model
-
 
 def embed_text(text: str) -> list[float]:
     model = get_embedding_model()
