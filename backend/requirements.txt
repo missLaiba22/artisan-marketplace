@@ -48,3 +48,5 @@ pgvector==0.3.6
 groq==0.13.0
 websockets
 uvicorn[standard]
+huggingface_hub
+numpy
